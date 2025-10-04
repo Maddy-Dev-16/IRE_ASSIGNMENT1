@@ -1,15 +1,13 @@
-# main.py
+import itertools
 from elasticsearch import Elasticsearch
 from src.data_loader import load_wiki_data, load_news_data
 from src.es_indexer import ESIndexer
 
-# This function definition must start at the far left of the file (no indent)
-def run_indexing_phase():
-    """Runs the entire process for indexing data into Elasticsearch."""
-    # Code inside the function is indented
-    print("--- Starting Elasticsearch Indexing Phase ---")
-
-    # 1. Connect to Elasticsearch
+def run_final_indexing():
+    """
+    Creates the final ESIndex-v1.0 by indexing a large sample
+    of both Wikipedia and News data.
+    """
     try:
         es_client = Elasticsearch("http://localhost:9200")
         if not es_client.ping():
@@ -23,23 +21,18 @@ def run_indexing_phase():
     es_indexer = ESIndexer(es_client)
     index_name = "esindex-v1.0"
     
-    # --- Step 1: Create the index blueprint (will only happen once) ---
-    es_indexer.create_index(index_id=index_name)
+    # --- Load 100,000 documents from EACH dataset ---
+    print("\n--- Loading All Datasets (Sample) ---")
+    wiki_documents = load_wiki_data("data/wiki/", limit=100000)
+    news_documents = load_news_data("data/News_Datasets/", limit=100000)
     
-    # --- Step 2: Load and index Wikipedia data ---
-    # NOTE: Since you already indexed this, you can comment out these two lines for now
-    # print("\n--- Indexing Wikipedia Data ---")
-    # wiki_documents = load_wiki_data("data/wiki/")
-    # es_indexer.add_documents(index_id=index_name, documents=wiki_documents)
+    # Combine them into a single stream
+    all_documents = itertools.chain(wiki_documents, news_documents)
     
-    # --- Step 3: Load and index News data ---
-    print("\n--- Indexing News Data ---")
-    news_documents = load_news_data("data/News_Datasets/") # Make sure your news zips are in data/news/
-    es_indexer.add_documents(index_id=index_name, documents=news_documents)
+    # This will delete any old index and create the final, correct one
+    es_indexer.create_index(index_id=index_name, documents=all_documents)
     
-    print("\n--- All Indexing Complete ---")
+    print("\n--- Final ESIndex-v1.0 Build Complete (with sample data) ---")
 
-# This "if" statement must also start at the far left of the file (no indent)
 if __name__ == "__main__":
-    # The call to the function is indented inside the "if" block
-    run_indexing_phase()
+    run_final_indexing()
