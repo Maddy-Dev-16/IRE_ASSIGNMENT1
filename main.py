@@ -1,38 +1,56 @@
+# main.py
+import argparse
 import itertools
 from elasticsearch import Elasticsearch
+
+# Import all our modules
 from src.data_loader import load_wiki_data, load_news_data
 from src.es_indexer import ESIndexer
+from src.self_indexer import SelfIndexer
 
-def run_final_indexing():
-    """
-    Creates the final ESIndex-v1.0 by indexing a large sample
-    of both Wikipedia and News data.
-    """
-    try:
-        es_client = Elasticsearch("http://localhost:9200")
-        if not es_client.ping():
-            raise ConnectionError("Could not connect to Elasticsearch.")
-        print("Successfully connected to local Elasticsearch instance!")
-    except Exception as e:
-        print(f"Connection failed: {e}")
-        print("Please ensure your local Elasticsearch instance is running.")
-        return
+def run_es_indexing(limit_docs=None):
+    """Builds the ESIndex using a sample of data."""
+    print("--- Starting Elasticsearch Indexing Phase ---")
     
+    # --- This function builds the Elasticsearch index ---
+    es_client = Elasticsearch("http://localhost:9200")
+    if not es_client.ping():
+        raise ConnectionError("Could not connect to Elasticsearch.")
+        
     es_indexer = ESIndexer(es_client)
-    index_name = "esindex-v1.0"
     
-    # --- Load 100,000 documents from EACH dataset ---
-    print("\n--- Loading All Datasets (Sample) ---")
-    wiki_documents = load_wiki_data("data/wiki/", limit=100000)
-    news_documents = load_news_data("data/News_Datasets/", limit=100000)
+    print(f"\n--- Loading datasets (limit: {limit_docs} per source) ---")
+    wiki_docs = load_wiki_data("data/wiki/", limit=limit_docs)
+    news_docs = load_news_data("data/News_Datasets/", limit=limit_docs) # <-- CORRECTED PATH
+    all_documents = itertools.chain(wiki_docs, news_docs)
     
-    # Combine them into a single stream
-    all_documents = itertools.chain(wiki_documents, news_documents)
+    es_indexer.create_index(index_id="esindex-v1.0", documents=all_documents)
+    print("\n--- ESIndex Build Complete ---")
+
+def run_self_indexing(limit_docs=None):
+    """Builds the SelfIndex using a sample of data."""
+    print("--- Starting Self-Indexing Phase ---")
     
-    # This will delete any old index and create the final, correct one
-    es_indexer.create_index(index_id=index_name, documents=all_documents)
+    self_indexer = SelfIndexer()
     
-    print("\n--- Final ESIndex-v1.0 Build Complete (with sample data) ---")
+    print(f"\n--- Loading datasets (limit: {limit_docs} per source) ---")
+    wiki_docs = load_wiki_data("data/wiki/", limit=limit_docs)
+    news_docs = load_news_data("data/News_Datasets/", limit=limit_docs) # Correct Path
+    all_documents = itertools.chain(wiki_docs, news_docs)
+    
+    self_indexer.create_index(index_id=self_indexer.identifier_short, documents=all_documents)
+    print("\n--- SelfIndex Build Complete ---")
 
 if __name__ == "__main__":
-    run_final_indexing()
+    parser = argparse.ArgumentParser(description="Build an index.")
+    parser.add_argument("--indexer", type=str, choices=['es', 'self'], required=True,
+                        help="Specify which indexer to run: 'es' or 'self'.")
+    args = parser.parse_args()
+
+    DOC_LIMIT = 100000
+
+    if args.indexer == 'self':
+        run_self_indexing(limit_docs=DOC_LIMIT)
+    elif args.indexer == 'es':
+        # run_es_indexing(limit_docs=DOC_LIMIT) # We can add this back later
+        print("ES indexing is disabled in this run. Use --indexer self.")

@@ -7,6 +7,7 @@ from typing import Iterable, Dict, Optional
 
 def load_news_data(folder_path: str, limit: Optional[int] = None) -> Iterable[Dict]:
     doc_id_counter = 0
+    limit_reached = False
     print(f"Loading News data from: {folder_path}")
     if not os.path.isdir(folder_path):
         print(f"Warning: News data directory not found at {folder_path}")
@@ -32,14 +33,18 @@ def load_news_data(folder_path: str, limit: Optional[int] = None) -> Iterable[Di
                                 doc_id_counter += 1
                                 if limit and doc_id_counter >= limit:
                                     print(f"\nReached news document limit of {limit}.")
-                                    return
+                                    limit_reached = True
+                                    break
                         except (json.JSONDecodeError, UnicodeDecodeError):
                             pass
-        if limit and doc_id_counter >= limit:
-            break
+                    if limit_reached:
+                        break
+            if limit_reached:
+                break
 
 def load_wiki_data(folder_path: str, limit: Optional[int] = None) -> Iterable[Dict]:
     doc_id_counter = 0
+    limit_reached = False
     print(f"Loading Wikipedia data from: {folder_path}")
     if not os.path.isdir(folder_path):
         raise FileNotFoundError(f"Error: Directory not found at {folder_path}")
@@ -59,6 +64,7 @@ def load_wiki_data(folder_path: str, limit: Optional[int] = None) -> Iterable[Di
             doc_id_counter += 1
             if limit and doc_id_counter >= limit:
                 print(f"\nReached wiki document limit of {limit}.")
-                return
-        if limit and doc_id_counter >= limit:
+                limit_reached = True
+                break
+        if limit_reached:
             break

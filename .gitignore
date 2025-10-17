@@ -3,6 +3,7 @@ env/
 
 # Data files
 data/
+*.json
 
 # Python caches
 __pycache__/
